@@ -92,3 +92,11 @@ export async function deleteTodo(id: unknown): Promise<void> {
   await saveTodos(updated);
   revalidatePath("/");
 }
+
+/** Remove all completed tasks from the shared list. */
+export async function clearCompleted(): Promise<void> {
+  const todos = await getTodos();
+  const updated = todos.filter((t) => !t.completed);
+  await saveTodos(updated);
+  revalidatePath("/");
+}
