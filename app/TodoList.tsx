@@ -1,10 +1,10 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { addTodo, toggleTodo, editTodo, deleteTodo } from "./actions";
+import { addTodo, toggleTodo, editTodo, deleteTodo, clearCompleted } from "./actions";
 import type { Todo } from "@/lib/todos";
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// ── Icons ────────────────────────────────────────────────────────────────────
 
 function CheckIcon() {
   return (
@@ -43,7 +43,6 @@ function XIcon() {
 }
 
 // ── TodoRow ───────────────────────────────────────────────────────────────────
-// Handles inline edit, toggle, delete for a single task.
 
 function TodoRow({ todo }: { todo: Todo }) {
   const [editing, setEditing] = useState(false);
@@ -54,7 +53,6 @@ function TodoRow({ todo }: { todo: Todo }) {
   function startEdit() {
     setEditText(todo.text);
     setEditing(true);
-    // Focus after state flush
     requestAnimationFrame(() => inputRef.current?.focus());
   }
 
@@ -77,7 +75,7 @@ function TodoRow({ todo }: { todo: Todo }) {
   }
 
   const rowBase =
-    "task-row group flex items-center gap-3 rounded-xl px-4 py-3.5 border transition-all";
+    "group flex items-center gap-3 rounded-xl px-4 py-3.5 border transition-all";
   const activeRow = `${rowBase} bg-white border-gray-100 shadow-sm hover:border-gray-200`;
   const editingRow = `${rowBase} bg-white border-indigo-300 shadow-sm ring-2 ring-indigo-100`;
   const completedRow = `${rowBase} bg-gray-50 border-gray-100 hover:border-gray-200`;
@@ -109,7 +107,7 @@ function TodoRow({ todo }: { todo: Todo }) {
             onChange={(e) => setEditText(e.target.value)}
             onBlur={saveEdit}
             onKeyDown={handleKeyDown}
-            className="flex-1 text-sm text-gray-800 outline-none bg-transparent font-medium caret-indigo-500"
+            className="flex-1 text-sm text-gray-800 outline-none bg-transparent caret-indigo-500"
           />
           <span className="text-xs text-gray-300 flex-shrink-0">editing</span>
         </>
@@ -126,11 +124,11 @@ function TodoRow({ todo }: { todo: Todo }) {
         </span>
       )}
 
-      {/* Delete button — revealed on hover via group */}
+      {/* Delete — revealed on hover */}
       <button
         aria-label="Delete task"
         onClick={() => startTransition(() => deleteTodo(todo.id))}
-        className="delete-btn opacity-0 group-hover:opacity-100 flex-shrink-0 text-gray-300 hover:text-red-400 transition-all"
+        className="opacity-0 group-hover:opacity-100 flex-shrink-0 text-gray-300 hover:text-red-400 transition-all"
       >
         <XIcon />
       </button>
@@ -143,7 +141,6 @@ function TodoRow({ todo }: { todo: Todo }) {
 function AddTaskForm() {
   const [text, setText] = useState("");
   const [, startTransition] = useTransition();
-  const inputRef = useRef<HTMLInputElement>(null);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -171,7 +168,6 @@ function AddTaskForm() {
           />
         </svg>
         <input
-          ref={inputRef}
           type="text"
           placeholder="Add a new task…"
           value={text}
@@ -189,9 +185,52 @@ function AddTaskForm() {
   );
 }
 
+// ── EmptyState ─────────────────────────────────────────────────────────────────
+
+function EmptyState() {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 text-center">
+      {/* Decorative circle with a faint checkmark */}
+      <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+        <svg
+          className="w-7 h-7 text-gray-300"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={1.5}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+          />
+        </svg>
+      </div>
+      <p className="text-sm font-medium text-gray-400 mb-1">No tasks yet</p>
+      <p className="text-xs text-gray-300">Add something above to get started.</p>
+    </div>
+  );
+}
+
+// ── Footer ─────────────────────────────────────────────────────────────────────
+
+function Footer() {
+  return (
+    <div className="mt-12 pt-6 border-t border-gray-100 flex items-center justify-between">
+      <p className="text-xs text-gray-300">Synced just now</p>
+      <div className="flex items-center gap-1.5">
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+        <p className="text-xs text-gray-300">Live · shared with everyone</p>
+      </div>
+    </div>
+  );
+}
+
 // ── TodoList (main export) ─────────────────────────────────────────────────────
 
 export default function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
+  const [, startTransition] = useTransition();
+
   const active = initialTodos.filter((t) => !t.completed);
   const completed = initialTodos.filter((t) => t.completed);
 
@@ -200,7 +239,7 @@ export default function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
       {/* Header */}
       <div className="mb-10">
         <div className="flex items-center gap-2.5 mb-1">
-          <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center">
+          <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center flex-shrink-0">
             <svg
               className="w-4 h-4 text-white"
               fill="none"
@@ -227,6 +266,9 @@ export default function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
       {/* Add task */}
       <AddTaskForm />
 
+      {/* Empty state — only when list is completely empty */}
+      {initialTodos.length === 0 && <EmptyState />}
+
       {/* Active tasks */}
       {active.length > 0 && (
         <div className="mb-6">
@@ -252,17 +294,22 @@ export default function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
               <TodoRow key={todo.id} todo={todo} />
             ))}
           </div>
+
+          {/* Clear completed */}
+          <div className="mt-4 text-center">
+            <button
+              onClick={() => startTransition(() => clearCompleted())}
+              className="text-xs text-gray-400 hover:text-red-400 transition-colors"
+            >
+              Clear {completed.length} completed{" "}
+              {completed.length === 1 ? "task" : "tasks"}
+            </button>
+          </div>
         </div>
       )}
 
-      {/* Empty state */}
-      {initialTodos.length === 0 && (
-        <div className="text-center py-12">
-          <p className="text-sm text-gray-300">
-            No tasks yet — add one above.
-          </p>
-        </div>
-      )}
+      {/* Footer */}
+      <Footer />
     </div>
   );
 }
